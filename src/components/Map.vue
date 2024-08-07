@@ -1,68 +1,66 @@
 <template>
   <div class="container">
-    <div class="row justify-content-center mt-4">
-      <div class="col-md-6 text-center">
-        <h2 class="mb-4">Crime Alert</h2>
-        <button v-if="!formVisible" class="btn btn-primary mb-3" @click="showForm">Report</button>
-        <div v-if="formVisible" class="form-container">
-          <h4>Report Your Experience</h4>
-          <form @submit.prevent="submitForm">
-            <div class="form-group">
-              <label for="crimeType">Type of Crime:</label>
-              <select v-model="crimeType" id="crimeType" class="form-control" required>
-                <option value="" disabled>Select a crime</option>
-                <option value="experienced">Experienced a crime</option>
-                <option value="witnessed">Witnessed a crime</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="specificCrime">Specific Crime:</label>
-              <select v-model="specificCrime" id="specificCrime" class="form-control" required>
-                <option value="" disabled>Select specific crime</option>
-                <option value="theft">Theft</option>
-                <option value="assault">Assault</option>
-                <option value="vandalism">Vandalism</option>
-                <!-- Add more specific crimes as needed -->
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Submit</button>
-            <button type="button" class="btn btn-secondary ml-2" @click="cancelForm">Cancel</button>
-          </form>
-        </div>
-        <button v-if="retryButtonVisible" class="btn btn-secondary mb-3" @click="retryFetchLocation">Retry</button>
-        <button v-if="currentLocation && !settingDangerZone && !dangerZoneFormVisible" class="btn btn-danger mb-3" @click="showDangerZoneForm">Set Danger Zone</button>
-        <div v-if="dangerZoneFormVisible" class="form-container">
-          <h4>Confirm Danger Zone</h4>
-          <form @submit.prevent="confirmDangerZone">
-            <div class="form-group">
-              <label for="dangerZoneType">Type of Danger Zone:</label>
-              <select v-model="dangerZoneType" id="dangerZoneType" class="form-control" required>
-                <option value="" disabled>Select a type</option>
-                <option value="high">High Risk</option>
-                <option value="medium">Medium Risk</option>
-                <option value="low">Low Risk</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Confirm</button>
-            <button type="button" class="btn btn-secondary ml-2" @click="cancelDangerZoneSetting">Cancel</button>
-          </form>
-        </div>
-        <div v-if="settingDangerZone" class="alert alert-warning mt-2" role="alert">
-          Click on the map to set a danger zone within 1000 meters of your location.
-        </div>
-        <div id="map" class="my-4"></div>
-        <div v-if="locationDisplay" class="alert alert-info mt-2" role="alert">
-          <div v-html="locationDisplay"></div>
-        </div>
-        <div v-if="dangerZones.length > 0" class="danger-zones mt-4">
-          <h4>Danger Zones</h4>
-          <ul class="list-group">
-            <li v-for="(zone, index) in dangerZones" :key="index" class="list-group-item">
-              Zone {{ index + 1 }} ({{ zone.latLng.lat.toFixed(5) }}, {{ zone.latLng.lng.toFixed(5) }}, {{ zone.type }})
-              <button class="btn btn-sm btn-danger float-right" @click="removeDangerZone(index)">Remove</button>
-            </li>
-          </ul>
-        </div>
+    <div class="content">
+      <h2 class="title">Crime Alert</h2>
+      <button v-if="!formVisible" class="btn btn-primary" @click="showForm">Report</button>
+      <div v-if="formVisible" class="form-container">
+        <h4 class="form-title">Report Your Experience</h4>
+        <form @submit.prevent="submitForm">
+          <div class="form-group">
+            <label for="crimeType">Type of Crime:</label>
+            <select v-model="crimeType" id="crimeType" class="form-control" required>
+              <option value="" disabled>Select a crime</option>
+              <option value="experienced">Experienced a crime</option>
+              <option value="witnessed">Witnessed a crime</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="specificCrime">Specific Crime:</label>
+            <select v-model="specificCrime" id="specificCrime" class="form-control" required>
+              <option value="" disabled>Select specific crime</option>
+              <option value="theft">Theft</option>
+              <option value="assault">Assault</option>
+              <option value="vandalism">Vandalism</option>
+              <!-- Add more specific crimes as needed -->
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="button" class="btn btn-secondary" @click="cancelForm">Cancel</button>
+        </form>
+      </div>
+      <button v-if="retryButtonVisible" class="btn btn-secondary" @click="retryFetchLocation">Retry</button>
+      <button v-if="currentLocation && !settingDangerZone && !dangerZoneFormVisible" class="btn btn-danger" @click="showDangerZoneForm">Set Danger Zone</button>
+      <div v-if="dangerZoneFormVisible" class="form-container">
+        <h4 class="form-title">Confirm Danger Zone</h4>
+        <form @submit.prevent="confirmDangerZone">
+          <div class="form-group">
+            <label for="dangerZoneType">Type of Danger Zone:</label>
+            <select v-model="dangerZoneType" id="dangerZoneType" class="form-control" required>
+              <option value="" disabled>Select a type</option>
+              <option value="high">High Risk</option>
+              <option value="medium">Medium Risk</option>
+              <option value="low">Low Risk</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Confirm</button>
+          <button type="button" class="btn btn-secondary" @click="cancelDangerZoneSetting">Cancel</button>
+        </form>
+      </div>
+      <div v-if="settingDangerZone" class="alert alert-warning">
+        Click on the map to set a danger zone within 1000 meters of your location.
+      </div>
+      <div id="map" class="map"></div>
+      <div v-if="locationDisplay" class="alert alert-info">
+        <div v-html="locationDisplay"></div>
+      </div>
+      <div v-if="dangerZones.length > 0" class="danger-zones">
+        <h4 class="danger-zones-title">Danger Zones</h4>
+        <ul>
+          <li v-for="(zone, index) in dangerZones" :key="index" class="danger-zone-item">
+            Zone {{ index + 1 }} ({{ zone.latLng.lat.toFixed(5) }}, {{ zone.latLng.lng.toFixed(5) }}, {{ zone.type }})
+            <button class="btn btn-sm btn-danger" @click="removeDangerZone(index)">Remove</button>
+          </li>
+        </ul>
       </div>
     </div>
   </div>
@@ -84,10 +82,10 @@ export default {
       currentLocation: null,
       settingDangerZone: false,
       formVisible: false,
-      dangerZoneFormVisible: false,
+      dangerZoneFormVisible: false, // Track danger zone form visibility
       crimeType: '',
-      specificCrime: '', // New data property for specific crime type
-      dangerZoneType: ''
+      specificCrime: '', // Store specific crime type
+      dangerZoneType: '' // Store the selected danger zone type
     };
   },
   mounted() {
@@ -113,12 +111,8 @@ export default {
     submitForm() {
       console.log('Crime Type:', this.crimeType);
       console.log('Specific Crime:', this.specificCrime);
-      if (this.crimeType && this.specificCrime) {
-        this.formVisible = false;
-        this.fetchLocation();
-      } else {
-        console.log('Please select both the type and specific crime.');
-      }
+      this.formVisible = false;
+      this.fetchLocation();
     },
     fetchLocation() {
       console.log('Fetching location...');
@@ -195,27 +189,23 @@ export default {
       console.error('Geolocation error:', errorMessage);
     },
     showDangerZoneForm() {
-      this.dangerZoneFormVisible = true;
+      this.settingDangerZone = true;
+      this.dangerZoneFormVisible = true; // Show danger zone form
     },
     cancelDangerZoneSetting() {
       this.settingDangerZone = false;
-      this.dangerZoneFormVisible = false;
+      this.dangerZoneFormVisible = false; // Hide danger zone form
     },
     confirmDangerZone() {
-      console.log('Danger Zone Type:', this.dangerZoneType);
-      if (this.dangerZoneType) {
-        this.dangerZoneFormVisible = false;
-        this.settingDangerZone = true;
-      } else {
-        console.log('Please select a type for the danger zone.');
-      }
+      this.dangerZoneFormVisible = false; // Hide danger zone form
+      this.settingDangerZone = true; // Enable danger zone setting mode
     },
-    handleMapClick(e) {
+    handleMapClick(event) {
       if (this.settingDangerZone) {
-        const selectedPoint = e.latlng;
+        const selectedPoint = event.latlng;
         const distance = this.map.distance(this.currentLocation, selectedPoint);
 
-        if (distance <= 500) {
+        if (distance <= 1000) {
           const dangerZone = {
             latLng: selectedPoint,
             circle: L.circle(selectedPoint, {
@@ -231,98 +221,84 @@ export default {
           this.settingDangerZone = false;
           this.dangerZoneFormVisible = false;
         } else {
-          this.locationDisplay = `
-            <div class="alert alert-danger mt-2" role="alert">
-              The selected point is more than 500 meters away from your location. Please select a point closer to your current location.
-            </div>`;
+          alert('You can only set a danger zone within 1000 meters of your current location.');
         }
       }
     },
     removeDangerZone(index) {
-      this.map.removeLayer(this.dangerZones[index].circle);
-      this.dangerZones.splice(index, 1);
+      const zone = this.dangerZones[index];
+      if (zone && zone.circle) {
+        this.map.removeLayer(zone.circle);
+        this.dangerZones.splice(index, 1);
+      }
     }
   }
-}
+};
 </script>
 
 <style scoped>
-#map {
-  height: 400px;
-  width: 100%;
-}
-
-#locationDisplay {
-  white-space: pre-line;
-}
-
-.location-info {
-  text-align: left;
-  font-size: 1rem;
-}
-
-.location-item {
-  margin-bottom: 0.5rem;
-  font-size: 1.1rem;
-}
-
+/* General styles */
 .container {
-  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: #f0f0f0;
 }
 
-h2 {
+.content {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
   color: #333;
+}
+
+.btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: none;
 }
 
 .btn-primary {
   background-color: #007bff;
-  border-color: #007bff;
+  color: #fff;
 }
 
 .btn-secondary {
   background-color: #6c757d;
-  border-color: #6c757d;
+  color: #fff;
 }
 
 .btn-danger {
   background-color: #dc3545;
-  border-color: #dc3545;
+  color: #fff;
 }
 
 .btn-warning {
   background-color: #ffc107;
-  border-color: #ffc107;
-}
-
-.danger-zones {
-  margin-top: 20px;
-}
-
-.danger-zones ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-.danger-zones li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid #ccc;
-  margin-bottom: 5px;
-  border-radius: 4px;
-}
-
-.alert {
-  font-size: 1rem;
+  color: #fff;
 }
 
 .form-container {
-  margin-top: 20px;
+  margin: 20px 0;
   padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background-color: #fff;
+}
+
+.form-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
 }
 
 .form-group {
@@ -331,10 +307,60 @@ h2 {
 
 .form-control {
   width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
 }
 
-.ml-2 {
-  margin-left: 10px;
+.map {
+  height: 300px;
+  width: 100%;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.alert {
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.alert-info {
+  background-color: #d9edf7;
+  color: #31708f;
+}
+
+.alert-warning {
+  background-color: #fcf8e3;
+  color: #8a6d3b;
+}
+
+.danger-zones {
+  margin-top: 20px;
+}
+
+.danger-zones-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+.danger-zone-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #fff;
+  margin-bottom: 5px;
+}
+
+.danger-zone-item .btn-danger {
+  padding: 5px;
+  font-size: 0.8rem;
 }
 </style>
+
 
