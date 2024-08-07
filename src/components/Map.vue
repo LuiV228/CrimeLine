@@ -1,12 +1,52 @@
-<!-- src/components/Map.vue -->
 <template>
   <div class="container">
     <div class="row justify-content-center mt-4">
       <div class="col-md-6 text-center">
         <h2 class="mb-4">Crime Alert</h2>
-        <button class="btn btn-primary mb-3" @click="fetchLocation">Get My Location</button>
-        <button v-if="retryButtonVisible" class="btn btn-secondary mb-3" @click="retryFetchLocation" ref="retryButton">Retry</button>
-        <button v-if="currentLocation" class="btn btn-danger mb-3" @click="enableDangerZoneSetting">Set Danger Zone</button>
+        <button v-if="!formVisible" class="btn btn-primary mb-3" @click="showForm">Report</button>
+        <div v-if="formVisible" class="form-container">
+          <h4>Report Your Experience</h4>
+          <form @submit.prevent="submitForm">
+            <div class="form-group">
+              <label for="crimeType">Type of Crime:</label>
+              <select v-model="crimeType" id="crimeType" class="form-control" required>
+                <option value="" disabled>Select a crime</option>
+                <option value="experienced">Experienced a crime</option>
+                <option value="witnessed">Witnessed a crime</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="specificCrime">Specific Crime:</label>
+              <select v-model="specificCrime" id="specificCrime" class="form-control" required>
+                <option value="" disabled>Select specific crime</option>
+                <option value="theft">Theft</option>
+                <option value="assault">Assault</option>
+                <option value="vandalism">Vandalism</option>
+                <!-- Add more specific crimes as needed -->
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <button type="button" class="btn btn-secondary ml-2" @click="cancelForm">Cancel</button>
+          </form>
+        </div>
+        <button v-if="retryButtonVisible" class="btn btn-secondary mb-3" @click="retryFetchLocation">Retry</button>
+        <button v-if="currentLocation && !settingDangerZone && !dangerZoneFormVisible" class="btn btn-danger mb-3" @click="showDangerZoneForm">Set Danger Zone</button>
+        <div v-if="dangerZoneFormVisible" class="form-container">
+          <h4>Confirm Danger Zone</h4>
+          <form @submit.prevent="confirmDangerZone">
+            <div class="form-group">
+              <label for="dangerZoneType">Type of Danger Zone:</label>
+              <select v-model="dangerZoneType" id="dangerZoneType" class="form-control" required>
+                <option value="" disabled>Select a type</option>
+                <option value="high">High Risk</option>
+                <option value="medium">Medium Risk</option>
+                <option value="low">Low Risk</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Confirm</button>
+            <button type="button" class="btn btn-secondary ml-2" @click="cancelDangerZoneSetting">Cancel</button>
+          </form>
+        </div>
         <div v-if="settingDangerZone" class="alert alert-warning mt-2" role="alert">
           Click on the map to set a danger zone within 1000 meters of your location.
         </div>
@@ -18,7 +58,7 @@
           <h4>Danger Zones</h4>
           <ul class="list-group">
             <li v-for="(zone, index) in dangerZones" :key="index" class="list-group-item">
-              Zone {{ index + 1 }} ({{ zone.latLng.lat.toFixed(5) }}, {{ zone.latLng.lng.toFixed(5) }})
+              Zone {{ index + 1 }} ({{ zone.latLng.lat.toFixed(5) }}, {{ zone.latLng.lng.toFixed(5) }}, {{ zone.type }})
               <button class="btn btn-sm btn-danger float-right" @click="removeDangerZone(index)">Remove</button>
             </li>
           </ul>
@@ -39,11 +79,15 @@ export default {
       map: null,
       circle: null,
       locationDisplay: '',
-      retryButtonVisible: false, // Track retry button visibility
-      dangerZones: [], // Track danger zones
-      currentLocation: null, // Store the current location
-      settingDangerZone: false, // Track if we're setting a danger zone
-      panicMarker: null, // Track the panic marker
+      retryButtonVisible: false,
+      dangerZones: [],
+      currentLocation: null,
+      settingDangerZone: false,
+      formVisible: false,
+      dangerZoneFormVisible: false,
+      crimeType: '',
+      specificCrime: '', // New data property for specific crime type
+      dangerZoneType: ''
     };
   },
   mounted() {
@@ -58,31 +102,51 @@ export default {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(this.map);
 
-      this.map.on('click', this.handleMapClick); // Attach click event handler
+      this.map.on('click', this.handleMapClick);
+    },
+    showForm() {
+      this.formVisible = true;
+    },
+    cancelForm() {
+      this.formVisible = false;
+    },
+    submitForm() {
+      console.log('Crime Type:', this.crimeType);
+      console.log('Specific Crime:', this.specificCrime);
+      if (this.crimeType && this.specificCrime) {
+        this.formVisible = false;
+        this.fetchLocation();
+      } else {
+        console.log('Please select both the type and specific crime.');
+      }
     },
     fetchLocation() {
-      console.log('Fetching location...'); // Debugging line
+      console.log('Fetching location...');
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(this.showPosition, this.showError, { 
-          enableHighAccuracy: true, 
-          timeout: 10000, 
-          maximumAge: 0 
-        });
+        navigator.geolocation.getCurrentPosition(
+          this.showPosition,
+          this.showError,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
       } else {
         this.locationDisplay = "Geolocation is not supported by this browser.";
       }
     },
     retryFetchLocation() {
-      console.log('Retry button clicked'); // Debugging line
-      this.fetchLocation(); // Trigger the fetchLocation method
+      console.log('Retry button clicked');
+      this.fetchLocation();
     },
     showPosition(position) {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       const accuracy = position.coords.accuracy;
 
-      console.log('Current Location:', latitude, longitude); // Debugging line
-      console.log('Accuracy:', accuracy); // Debugging line
+      console.log('Current Location:', latitude, longitude);
+      console.log('Accuracy:', accuracy);
 
       this.currentLocation = [latitude, longitude];
       this.map.setView(this.currentLocation, 13);
@@ -107,13 +171,12 @@ export default {
           <div class="location-item"><strong>Displayed Radius:</strong> The circle on the map shows an area of ${accuracy.toFixed(2)} meters around your location</div>
         </div>`;
 
-      // Update retryButtonVisible based on accuracy
       this.retryButtonVisible = accuracy > 500;
     },
     showError(error) {
       let errorMessage = "An unknown error occurred.";
 
-      switch(error.code) {
+      switch (error.code) {
         case error.PERMISSION_DENIED:
           errorMessage = "You denied the request for your location. Please enable location services in your browser.";
           break;
@@ -131,28 +194,46 @@ export default {
       this.locationDisplay = errorMessage;
       console.error('Geolocation error:', errorMessage);
     },
-    enableDangerZoneSetting() {
-      this.settingDangerZone = true;
+    showDangerZoneForm() {
+      this.dangerZoneFormVisible = true;
     },
-    handleMapClick(event) {
+    cancelDangerZoneSetting() {
+      this.settingDangerZone = false;
+      this.dangerZoneFormVisible = false;
+    },
+    confirmDangerZone() {
+      console.log('Danger Zone Type:', this.dangerZoneType);
+      if (this.dangerZoneType) {
+        this.dangerZoneFormVisible = false;
+        this.settingDangerZone = true;
+      } else {
+        console.log('Please select a type for the danger zone.');
+      }
+    },
+    handleMapClick(e) {
       if (this.settingDangerZone) {
-        const clickLatLng = event.latlng;
-        const distance = this.map.distance(this.currentLocation, clickLatLng);
-        
-        if (distance <= 500) {
-          const dangerZone = L.circle(clickLatLng, {
-            color: 'orange',
-            fillColor: '#f60',
-            fillOpacity: 0.5,
-            radius: 100
-          }).addTo(this.map);
+        const selectedPoint = e.latlng;
+        const distance = this.map.distance(this.currentLocation, selectedPoint);
 
-          this.dangerZones.push({ circle: dangerZone, latLng: clickLatLng });
-          this.settingDangerZone = false; // Disable setting danger zone mode
+        if (distance <= 500) {
+          const dangerZone = {
+            latLng: selectedPoint,
+            circle: L.circle(selectedPoint, {
+              color: 'red',
+              fillColor: '#f03',
+              fillOpacity: 0.5,
+              radius: 100
+            }).addTo(this.map),
+            type: this.dangerZoneType // Store the type of the danger zone
+          };
+
+          this.dangerZones.push(dangerZone);
+          this.settingDangerZone = false;
+          this.dangerZoneFormVisible = false;
         } else {
           this.locationDisplay = `
             <div class="alert alert-danger mt-2" role="alert">
-              The selected point is more than 1000 meters away from your location. Please select a point closer to your current location.
+              The selected point is more than 500 meters away from your location. Please select a point closer to your current location.
             </div>`;
         }
       }
@@ -172,7 +253,7 @@ export default {
 }
 
 #locationDisplay {
-  white-space: pre-line; /* Preserve line breaks in the alert */
+  white-space: pre-line;
 }
 
 .location-info {
@@ -181,8 +262,8 @@ export default {
 }
 
 .location-item {
-  margin-bottom: 0.5rem; /* Space between lines */
-  font-size: 1.1rem; /* Slightly increase font size */
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
 }
 
 .container {
@@ -233,23 +314,27 @@ h2 {
 }
 
 .alert {
-  font-size: 1rem; /* Increase font size for better readability */
+  font-size: 1rem;
+}
+
+.form-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-control {
+  width: 100%;
+}
+
+.ml-2 {
+  margin-left: 10px;
 }
 </style>
 
-
-
-
-
-
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
