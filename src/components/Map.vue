@@ -28,36 +28,41 @@
           <button type="button" class="btn btn-secondary" @click="cancelForm">Cancel</button>
         </form>
       </div>
-      <button v-if="retryButtonVisible" class="btn btn-secondary" @click="retryFetchLocation">Retry</button>
-      <button v-if="currentLocation && !settingDangerZone && !dangerZoneFormVisible" class="btn btn-danger" @click="showDangerZoneForm">Set Danger Zone</button>
-      <div v-if="dangerZoneFormVisible" class="form-container">
-        <h4 class="form-title">Confirm Danger Zone</h4>
-        <form @submit.prevent="confirmDangerZone">
+      <div v-if="retryButtonVisible" class="ui-message">
+        <p>Failed to fetch accurate location. <button class="btn btn-secondary" @click="retryFetchLocation">Retry</button></p>
+      </div>
+      <button v-if="currentLocation && !riskLevelFormVisible && !dangerZoneFormVisible" class="btn btn-danger" @click="enableRiskLevelForm">Set Danger Zone</button>
+      <div v-if="riskLevelFormVisible" class="form-container">
+        <h4 class="form-title">Select Risk Level</h4>
+        <form @submit.prevent="confirmRiskLevel">
           <div class="form-group">
-            <label for="dangerZoneType">Type of Danger Zone:</label>
-            <select v-model="dangerZoneType" id="dangerZoneType" class="form-control" required>
-              <option value="" disabled>Select a type</option>
+            <label for="riskLevel">Risk Level:</label>
+            <select v-model="riskLevel" id="riskLevel" class="form-control" required>
+              <option value="" disabled>Select risk level</option>
               <option value="high">High Risk</option>
               <option value="medium">Medium Risk</option>
               <option value="low">Low Risk</option>
             </select>
           </div>
           <button type="submit" class="btn btn-primary">Confirm</button>
-          <button type="button" class="btn btn-secondary" @click="cancelDangerZoneSetting">Cancel</button>
+          <button type="button" class="btn btn-secondary" @click="cancelRiskLevelForm">Cancel</button>
         </form>
       </div>
-      <div v-if="settingDangerZone" class="alert alert-warning">
-        Click on the map to set a danger zone within 1000 meters of your location.
+      <div v-if="dangerZoneFormVisible" class="form-container">
+        <h4 class="form-title">Set Danger Zone</h4>
+        <p>Click on the map to set a danger zone within 1000 meters of your location.</p>
+        <button type="button" class="btn btn-primary" @click="confirmDangerZone">Confirm</button>
+        <button type="button" class="btn btn-secondary" @click="cancelDangerZoneSetting">Cancel</button>
       </div>
       <div id="map" class="map"></div>
-      <div v-if="locationDisplay" class="alert alert-info">
+      <div v-if="locationDisplay" class="ui-message">
         <div v-html="locationDisplay"></div>
       </div>
       <div v-if="dangerZones.length > 0" class="danger-zones">
         <h4 class="danger-zones-title">Danger Zones</h4>
         <ul>
           <li v-for="(zone, index) in dangerZones" :key="index" class="danger-zone-item">
-            Zone {{ index + 1 }} ({{ zone.latLng.lat.toFixed(5) }}, {{ zone.latLng.lng.toFixed(5) }}, {{ zone.type }})
+            Zone {{ index + 1 }} ({{ zone.latLng.lat.toFixed(5) }}, {{ zone.latLng.lng.toFixed(5) }}) - {{ zone.riskLevel }}
             <button class="btn btn-sm btn-danger" @click="removeDangerZone(index)">Remove</button>
           </li>
         </ul>
@@ -68,6 +73,7 @@
 
 <script>
 import L from 'leaflet';
+import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 
 export default {
@@ -80,12 +86,15 @@ export default {
       retryButtonVisible: false,
       dangerZones: [],
       currentLocation: null,
-      settingDangerZone: false,
       formVisible: false,
-      dangerZoneFormVisible: false, // Track danger zone form visibility
+      riskLevelFormVisible: false,
+      dangerZoneFormVisible: false,
       crimeType: '',
-      specificCrime: '', // Store specific crime type
-      dangerZoneType: '' // Store the selected danger zone type
+      specificCrime: '',
+      riskLevel: '',
+      dangerZoneRadius: 700,
+      isSettingDangerZone: false,
+      areaName: ''
     };
   },
   mounted() {
@@ -134,7 +143,7 @@ export default {
       console.log('Retry button clicked');
       this.fetchLocation();
     },
-    showPosition(position) {
+    async showPosition(position) {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       const accuracy = position.coords.accuracy;
@@ -147,20 +156,53 @@ export default {
 
       if (this.circle) {
         this.circle.setLatLng(this.currentLocation);
-        this.circle.setRadius(accuracy > 500 ? 500 : accuracy);
+        this.circle.setRadius(accuracy > this.dangerZoneRadius ? this.dangerZoneRadius : accuracy);
       } else {
         this.circle = L.circle(this.currentLocation, {
           color: 'blue',
           fillColor: '#30f',
           fillOpacity: 0.2,
-          radius: accuracy > 500 ? 500 : accuracy
+          radius: accuracy > this.dangerZoneRadius ? this.dangerZoneRadius : accuracy
         }).addTo(this.map);
+      }
+
+      // Reverse geocode to get area name
+      try {
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+          params: {
+            lat: latitude,
+            lon: longitude,
+            format: 'json',
+            addressdetails: 1
+          }
+        });
+
+        const address = response.data.address;
+        this.areaName = [
+          address.suburb,
+          address.city,
+          address.state,
+          address.country
+        ].filter(Boolean).join(', ');
+
+        // Display a more specific area description if available
+        if (address.suburb) {
+          this.areaName = address.suburb;
+        } else if (address.city) {
+          this.areaName = address.city;
+        } else {
+          this.areaName = address.state || address.country || 'Unknown area';
+        }
+      } catch (error) {
+        console.error('Error fetching area name:', error);
+        this.areaName = 'Unknown area';
       }
 
       const accuracyLevel = accuracy <= 100 ? "Strong" : (accuracy <= 500 ? "Moderate" : "Low");
       this.locationDisplay = `
         <div class="location-info">
           <div class="location-item"><strong>Coordinates:</strong> Latitude: ${latitude.toFixed(5)}, Longitude: ${longitude.toFixed(5)}</div>
+          <div class="location-item"><strong>Area:</strong> ${this.areaName}</div>
           <div class="location-item"><strong>Accuracy:</strong> We are confident that your location is within ${accuracy.toFixed(2)} meters (${accuracyLevel})</div>
           <div class="location-item"><strong>Displayed Radius:</strong> The circle on the map shows an area of ${accuracy.toFixed(2)} meters around your location</div>
         </div>`;
@@ -168,62 +210,63 @@ export default {
       this.retryButtonVisible = accuracy > 500;
     },
     showError(error) {
-      let errorMessage = "An unknown error occurred.";
-
+      let errorMessage = '';
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          errorMessage = "You denied the request for your location. Please enable location services in your browser.";
+          errorMessage = 'User denied the request for Geolocation.';
           break;
         case error.POSITION_UNAVAILABLE:
-          errorMessage = "Your location is currently unavailable.";
+          errorMessage = 'Location information is unavailable.';
           break;
         case error.TIMEOUT:
-          errorMessage = "The request to get your location timed out. Please try again.";
+          errorMessage = 'The request to get user location timed out.';
           break;
         case error.UNKNOWN_ERROR:
-          errorMessage = "An unknown error occurred while fetching your location.";
+          errorMessage = 'An unknown error occurred.';
           break;
       }
-
-      this.locationDisplay = errorMessage;
-      console.error('Geolocation error:', errorMessage);
-    },
-    showDangerZoneForm() {
-      this.settingDangerZone = true;
-      this.dangerZoneFormVisible = true; // Show danger zone form
-    },
-    cancelDangerZoneSetting() {
-      this.settingDangerZone = false;
-      this.dangerZoneFormVisible = false; // Hide danger zone form
-    },
-    confirmDangerZone() {
-      this.dangerZoneFormVisible = false; // Hide danger zone form
-      this.settingDangerZone = true; // Enable danger zone setting mode
+      this.locationDisplay = `Error: ${errorMessage}`;
+      this.retryButtonVisible = true;
     },
     handleMapClick(event) {
-      if (this.settingDangerZone) {
-        const selectedPoint = event.latlng;
-        const distance = this.map.distance(this.currentLocation, selectedPoint);
-
-        if (distance <= 1000) {
-          const dangerZone = {
-            latLng: selectedPoint,
-            circle: L.circle(selectedPoint, {
-              color: 'red',
-              fillColor: '#f03',
+      if (this.isSettingDangerZone && this.currentLocation) {
+        const distance = this.map.distance(this.currentLocation, event.latlng);
+        if (distance <= this.dangerZoneRadius) {
+          this.dangerZones.push({
+            latLng: event.latlng,
+            circle: L.circle(event.latlng, {
+              color: this.riskLevel === 'high' ? 'red' : (this.riskLevel === 'medium' ? 'orange' : 'green'),
+              fillColor: this.riskLevel === 'high' ? '#f00' : (this.riskLevel === 'medium' ? '#ffa500' : '#0f0'),
               fillOpacity: 0.5,
               radius: 100
             }).addTo(this.map),
-            type: this.dangerZoneType // Store the type of the danger zone
-          };
+            riskLevel: this.riskLevel
+          });
 
-          this.dangerZones.push(dangerZone);
-          this.settingDangerZone = false;
           this.dangerZoneFormVisible = false;
+          this.riskLevelFormVisible = false;
+          this.isSettingDangerZone = false;
         } else {
-          alert('You can only set a danger zone within 1000 meters of your current location.');
+          this.locationDisplay = 'You can only set a danger zone within 1000 meters of your current location.';
         }
       }
+    },
+    enableRiskLevelForm() {
+      this.riskLevelFormVisible = true;
+    },
+    confirmRiskLevel() {
+      this.riskLevelFormVisible = false;
+      this.dangerZoneFormVisible = true;
+    },
+    cancelRiskLevelForm() {
+      this.riskLevelFormVisible = false;
+    },
+    confirmDangerZone() {
+      this.isSettingDangerZone = true;
+    },
+    cancelDangerZoneSetting() {
+      this.dangerZoneFormVisible = false;
+      this.isSettingDangerZone = false;
     },
     removeDangerZone(index) {
       const zone = this.dangerZones[index];
@@ -283,11 +326,6 @@ export default {
   color: #fff;
 }
 
-.btn-warning {
-  background-color: #ffc107;
-  color: #fff;
-}
-
 .form-container {
   margin: 20px 0;
   padding: 20px;
@@ -319,22 +357,14 @@ export default {
   margin-top: 20px;
 }
 
-.alert {
+.ui-message {
   margin: 10px 0;
   padding: 10px;
   border-radius: 5px;
   font-size: 1rem;
   text-align: center;
-}
-
-.alert-info {
-  background-color: #d9edf7;
-  color: #31708f;
-}
-
-.alert-warning {
-  background-color: #fcf8e3;
-  color: #8a6d3b;
+  background-color: #ffc107;
+  color: #333;
 }
 
 .danger-zones {
@@ -361,6 +391,20 @@ export default {
   padding: 5px;
   font-size: 0.8rem;
 }
+
+.location-info {
+  font-size: 0.9rem;
+}
+
+.location-item {
+  margin: 5px 0;
+}
 </style>
+
+
+
+
+
+
 
 
