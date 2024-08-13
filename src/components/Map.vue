@@ -338,35 +338,40 @@ export default {
 
 <style scoped>
 .container {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  font-family: 'Arial', sans-serif;
+  color: #fff;
+  background-color: #000;
   text-align: center;
 }
 .content {
   margin-top: 20px;
 }
 .title {
-  font-size: 24px;
+  font-size: 36px;
+  font-weight: bold;
   margin-bottom: 20px;
+  color: #ffcc00; /* Yellow title */
 }
 .btn {
-  margin: 10px;
   padding: 10px 20px;
+  margin: 5px;
   font-size: 16px;
   cursor: pointer;
 }
 .btn-primary {
   background-color: #007bff;
-  color: white;
+  color: #fff;
 }
 .btn-secondary {
   background-color: #6c757d;
-  color: white;
+  color: #fff;
 }
 .btn-danger {
   background-color: #dc3545;
-  color: white;
+  color: #fff;
 }
 .selected {
   border: 2px solid #007bff;
@@ -382,6 +387,19 @@ export default {
   justify-content: center;
   align-items: center;
 }
+/* .modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  padding: 20px;
+  border: 2px solid #000;
+  box-shadow: 0 5px 15px rgba(0,0,0,.5);
+  width: 90%;
+  max-width: 600px;
+  z-index: 1050;
+} */
 .modal-content {
   background: white;
   padding: 20px;
@@ -395,6 +413,8 @@ export default {
 .map {
   height: 400px;
   width: 100%;
+  margin: 20px 0;
+  border: 2px solid #000;
 }
 .danger-zones {
   margin-top: 20px;
