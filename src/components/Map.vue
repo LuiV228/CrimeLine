@@ -66,6 +66,8 @@
 
       <div v-if="locationDisplay" class="ui-message">
         <div v-html="locationDisplay"></div>
+        <button class="btn btn-secondary" @click="editInformation">Edit Information</button>
+        <button class="btn btn-primary" @click="submitInformation">Submit Information</button>
       </div>
     </div>
   </div>
@@ -89,14 +91,9 @@ export default {
       mapVisible: false,
       riskLevelFormVisible: false,
       dangerZoneFormVisible: false,
-      crimeType: '',
-      specificCrime: '',
-      riskLevel: '',
-      dangerZoneRadius: 700,
-      isSettingDangerZone: false,
-      areaName: '',
       questionIndex: 0,
       selectedOption: null,
+      selectedAnswers: [],
       questions: [
         {
           title: 'What type of crime did you encounter?',
@@ -205,23 +202,13 @@ export default {
           ]
         },
         {
-          title: 'In which direction did the suspect(s) flee?',
+          title: 'Do you wish to set a danger zone?',
           options: [
-            { label: 'North', value: 'north' },
-            { label: 'South', value: 'south' },
-            { label: 'East', value: 'east' },
-            { label: 'West', value: 'west' },
-            { label: 'Unknown', value: 'unknown' },
+            { label: 'Yes', value: 'yes' },
+            { label: 'No', value: 'no' }
           ]
-        },
-        {
-          title: 'Have the authorities been contacted?',
-          options: [
-            { label: 'Yes, they have been contacted', value: 'yes' },
-            { label: 'No, not yet', value: 'no' },
-          ]
-        },
-      ]
+        }
+      ],
     };
   },
   computed: {
@@ -241,14 +228,16 @@ export default {
     },
     nextQuestion() {
       if (this.questionIndex < this.questions.length - 1) {
+        this.selectedAnswers[this.questionIndex] = this.selectedOption;
         this.questionIndex++;
-        this.selectedOption = null; // Clear selection for the next question
+        this.selectedOption = null;
       }
     },
     previousQuestion() {
       if (this.questionIndex > 0) {
+        this.selectedAnswers[this.questionIndex] = this.selectedOption;
         this.questionIndex--;
-        this.selectedOption = null; // Clear selection for the previous question
+        this.selectedOption = null;
       }
     },
     getLocation() {
@@ -258,7 +247,13 @@ export default {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             this.currentLocation = { lat, lng };
-            this.locationDisplay = `<strong>Location:</strong> (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+
+            // Construct the locationDisplay content based on the selected answers
+            const description = this.generateDescription();
+            this.locationDisplay = `
+              <strong>Location:</strong> (${lat.toFixed(5)}, ${lng.toFixed(5)})<br/>
+              <strong>Description:</strong> ${description}
+            `;
             this.mapVisible = true;
 
             // Initialize the map
@@ -267,7 +262,7 @@ export default {
             });
           },
           () => {
-            alert('Failed to retrieve location. Please enable location services and try again.');
+            this.retryButtonVisible = true;
           },
           { enableHighAccuracy: true }
         );
@@ -275,29 +270,59 @@ export default {
         alert('Geolocation is not supported by this browser.');
       }
 
-      this.modalVisible = false; // Close the modal after getting location
+      this.modalVisible = false;
+    },
+    generateDescription() {
+      const answers = this.selectedAnswers;
+      const descriptions = [
+        `Type of crime: ${answers[0] || 'Not specified'}`,
+        `Specific crime: ${answers[1] || 'Not specified'}`,
+        `Location of crime: ${answers[2] || 'Not specified'}`,
+        `Time of crime: ${answers[3] || 'Not specified'}`,
+        `Number of suspects: ${answers[4] || 'Not specified'}`,
+        `Suspect(s) clothing: ${answers[5] || 'Not specified'}`,
+        `Weapons involved: ${answers[6] || 'Not specified'}`,
+        `Vehicle involved: ${answers[7] || 'Not specified'}`,
+        `Injuries: ${answers[8] || 'Not specified'}`,
+        `Stolen items: ${answers[9] || 'Not specified'}`,
+        `Danger zone set: ${answers[10] || 'Not specified'}`,
+      ];
+
+      return descriptions.join('<br/>');
+    },
+    editInformation() {
+      this.modalVisible = true;
+      this.questionIndex = 0;
+      this.selectedOption = this.selectedAnswers[this.questionIndex] || null;
+    },
+    submitInformation() {
+      // Handle the submission of the information
+      alert('Information submitted');
     },
     enableRiskLevelForm() {
       this.riskLevelFormVisible = true;
-      this.isSettingDangerZone = true;
     },
     retryFetchLocation() {
       this.retryButtonVisible = false;
       this.getLocation();
     },
     initMap() {
-      this.map = L.map('map').setView([this.currentLocation.lat, this.currentLocation.lng], 13);
+      this.$nextTick(() => {
+        if (!this.map && this.currentLocation) {
+          this.map = L.map('map').setView([this.currentLocation.lat, this.currentLocation.lng], 13);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-      }).addTo(this.map);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+          }).addTo(this.map);
 
-      L.marker([this.currentLocation.lat, this.currentLocation.lng])
-        .addTo(this.map)
-        .bindPopup('You are here')
-        .openPopup();
+          L.marker([this.currentLocation.lat, this.currentLocation.lng])
+            .addTo(this.map)
+            .bindPopup('You are here')
+            .openPopup();
 
-      this.map.on('click', this.handleMapClick);
+          this.map.on('click', this.handleMapClick);
+        }
+      });
     },
     handleMapClick(e) {
       if (this.isSettingDangerZone) {
@@ -309,7 +334,7 @@ export default {
 
         this.dangerZones.push(zone);
         this.drawDangerZone(latLng, this.dangerZoneRadius);
-        this.isSettingDangerZone = false; // Reset the flag
+        this.isSettingDangerZone = false;
       }
     },
     drawDangerZone(latLng, radius) {
@@ -331,7 +356,10 @@ export default {
     }
   },
   mounted() {
-    this.fetchLocation();
+    // Ensure the map is initialized only if the currentLocation is available and mapVisible is true
+    if (this.currentLocation && this.mapVisible) {
+      this.initMap();
+    }
   }
 };
 </script>
@@ -387,19 +415,6 @@ export default {
   justify-content: center;
   align-items: center;
 }
-/* .modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: #fff;
-  padding: 20px;
-  border: 2px solid #000;
-  box-shadow: 0 5px 15px rgba(0,0,0,.5);
-  width: 90%;
-  max-width: 600px;
-  z-index: 1050;
-} */
 .modal-content {
   background: white;
   padding: 20px;
@@ -436,7 +451,8 @@ export default {
 .ui-message {
   margin-top: 20px;
   padding: 15px;
-  background-color: #f8f9fa;
+  background-color: #000
+  ;
   border-radius: 5px;
   text-align: left;
 }
