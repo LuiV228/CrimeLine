@@ -149,18 +149,6 @@ export default {
           ]
         },
         {
-          title: 'What was the suspect(s) wearing?',
-          options: [
-            { label: 'Dark clothing', value: 'dark clothing' },
-            { label: 'Light clothing', value: 'light clothing' },
-            { label: 'Casual wear', value: 'casual wear' },
-            { label: 'Formal wear', value: 'formal wear' },
-            { label: 'Hooded jacket or hoodie', value: 'hooded jacket' },
-            { label: 'Mask or face covering', value: 'mask' },
-            { label: 'Unknown', value: 'unknown' },
-          ]
-        },
-        {
           title: 'Were any weapons involved?',
           options: [
             { label: 'Yes, a firearm', value: 'firearm' },
@@ -171,33 +159,12 @@ export default {
           ]
         },
         {
-          title: 'Was a vehicle involved?',
-          options: [
-            { label: 'Yes, a car', value: 'car' },
-            { label: 'Yes, a motorcycle', value: 'motorcycle/scooter' },
-            { label: 'Yes, a bicycle', value: 'bicycle' },
-            { label: 'No vehicle', value: 'no vehicle' },
-            { label: 'Unknown', value: 'unknown' },
-          ]
-        },
-        {
           title: 'Were there any injuries?',
           options: [
             { label: 'Yes, minor injuries', value: 'minor injuries' },
             { label: 'Yes, serious injuries', value: 'serious injuries' },
             { label: 'Yes, fatal injuries', value: 'fatal injuries' },
             { label: 'No injuries', value: 'no injuries' },
-            { label: 'Unknown', value: 'unknown' },
-          ]
-        },
-        {
-          title: 'Was anything stolen?',
-          options: [
-            { label: 'Yes, personal belongings', value: 'personal belongings' },
-            { label: 'Yes, cash or valuables', value: 'cash or valuables' },
-            { label: 'Yes, electronics', value: 'electronics' },
-            { label: 'Yes, a vehicle', value: 'vehicle' },
-            { label: 'No, nothing was stolen', value: 'no' },
             { label: 'Unknown', value: 'unknown' },
           ]
         },
@@ -280,14 +247,10 @@ export default {
         `Location of crime: ${answers[2] || 'Not specified'}`,
         `Time of crime: ${answers[3] || 'Not specified'}`,
         `Number of suspects: ${answers[4] || 'Not specified'}`,
-        `Suspect(s) clothing: ${answers[5] || 'Not specified'}`,
         `Weapons involved: ${answers[6] || 'Not specified'}`,
-        `Vehicle involved: ${answers[7] || 'Not specified'}`,
         `Injuries: ${answers[8] || 'Not specified'}`,
-        `Stolen items: ${answers[9] || 'Not specified'}`,
         `Danger zone set: ${answers[10] || 'Not specified'}`,
       ];
-
       return descriptions.join('<br/>');
     },
     editInformation() {
